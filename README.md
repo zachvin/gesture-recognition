@@ -2,6 +2,39 @@
 
 ### Semester project for Dr. Adam Czajka's Computer Vision class, by Zach Vincent
 
+# Part 2: Data acquisition and preparation
+
+## Source
+
+I collected data myself for this project using my webcam and the included `get-data.py` file. It is a CSV file with 43 rows. Each row includes 21 hand landmark positions as derived from MediaPipe in (Nx, Ny) format, where N is the landmark number (1-21). MediaPipe outputs these landmarks as fractions of total screen width and height, but to ensure the classifier only considers the relative positions of the landmarks, I normalized the data to be a fraction of the total hand width and height. I believe that this way the classifier works optimally regardless of the position of the hand on the screen. The 43rd row is the gesture, represented currently as `[0, 1, 2]` for `['stop', 'thumbs down', 'thumbs up']`, respectively. My hand data is located in `gesture-data/gesture-data.csv`.
+
+## Train v. Validation
+
+Since MediaPipe extracts the necessary landmarks and I normalize the output, the main source of variability will be in differently proportioned hands. I can retrieve this data from [this dataset](https://www.idiap.ch/webarchives/sites/www.idiap.ch/resource/gestures) or by asking friends to add to my current data. Data preprocessing for the downloaded dataset will require refactoring the code to iteratively extract MediaPipe landmarks from each image and transform into the same CSV format.
+
+## Distinct objects in data
+
+At time of writing, only three distinct gestures exist in the data: stop, thumbs down, and thumbs up. The dataset is restricted for the purpose of rapid classification testing. Now that the classification pipeline appears functional, the next step is to add additional data with my left hand (all current data uses my right) and add more gestures.
+
+## Characterization of samples
+
+My laptop webcam is 1280 x 720 pixels and all training was done with sufficient lighting (although more lighting would be beneficial). MediaPipe abstracts away all of the intrinsic image properties, so the processed samples are all continuous float values in the range `[0, 1]` representing the point's Manhattan distance from the origin of the ROI containing the hand (i.e. the topmost landmark will have the highest Y value, the leftmost landmark will have the smallest X value).
+
+## Current solution weaknesses
+
+The gesture recognition is functional. To install and test:
+
+```
+python3 -m pip install -r requirements.txt
+python3 recognition.py
+```
+
+The program will print the recognized gesture to the terminal. This initial solution has several weaknesses:
+- [ ] Minimal recognition types - only 3 gestures recognized. Solve by adding more gestures to training dataset.
+- [ ] At least one gesture is always recognized - classifier (XGBoost decision tree) will always output a classification, even when no gesture is present. Solve by taking training images with gesture label `none` or by changing classifier to a neural network that outputs class probabilities and use a minimum threshold for recognition.
+- [ ] Misclassified gestures based on hand orientation - sometimes, stop is interpreted as thumbs up. Solve by including more rotational variety in dataset.
+- [ ] No ability to recognize gestures that involve movement - only static gestures can be recognized with this classifier. Solve by implementing RNN and use [ASL dataset](https://dxli94.github.io/WLASL/).
+
 # Part 1: Conceptual design
 
 ## Problem description
