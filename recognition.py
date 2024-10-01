@@ -20,8 +20,8 @@ with open('models/classifier.pkl', 'rb') as f:
 
 prediction_classifier = {
    0: 'stop',
+   1: 'thumbs down',
    2: 'thumbs up',
-   1: 'thumbs down'
 }
 
 cols = []
