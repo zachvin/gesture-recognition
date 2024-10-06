@@ -14,7 +14,7 @@ Since MediaPipe extracts the necessary landmarks and I normalize the output, the
 
 ## Distinct objects in data
 
-At time of writing, only three distinct gestures exist in the data: stop, thumbs down, and thumbs up. The dataset is restricted for the purpose of rapid classification testing. Now that the classification pipeline appears functional, the next step is to add additional data with my left hand (all current data uses my right) and add more gestures.
+At time of writing, only four distinct gestures exist in the data: stop, thumbs down, thumbs up, and excuse me (single finger pointing upward). The dataset is restricted for the purpose of rapid classification testing. Now that the classification pipeline appears functional, the next step is to add additional data with my left hand (all current data uses my right) and add more gestures. Alternatively, the next step could be the expansion of the project into ASL translation using an RNN (see solution weaknesses).
 
 ## Characterization of samples
 
@@ -34,6 +34,8 @@ The program will print the recognized gesture to the terminal. This initial solu
 - [ ] At least one gesture is always recognized - classifier (XGBoost decision tree) will always output a classification, even when no gesture is present. Solve by taking training images with gesture label `none` or by changing classifier to a neural network that outputs class probabilities and use a minimum threshold for recognition.
 - [ ] Misclassified gestures based on hand orientation - sometimes, stop is interpreted as thumbs up. Solve by including more rotational variety in dataset.
 - [ ] No ability to recognize gestures that involve movement - only static gestures can be recognized with this classifier. Solve by implementing RNN and use [ASL dataset](https://dxli94.github.io/WLASL/).
+
+    > I have downloaded this dataset. Though I did not download the entire set, I now have on my machine 3071 unique glosses (ASL words) and 21083 total videos, totaling 717MB of unprocessed videos of varying dimensions. Though more data is available, I don't think I'll need it for the purposes of this project. The dataset came with an associated Computational Use of Data document, which is now uploaded to this repository as `C-UDA-1.0.pdf`.
 
 # Part 1: Conceptual design
 
