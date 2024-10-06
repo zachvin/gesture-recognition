@@ -4,7 +4,7 @@ import time
 import pandas as pd
 import numpy as np
 
-model_path = 'hand_landmarker.task'
+model_path = 'models/hand_landmarker.task'
 
 BaseOptions = mp.tasks.BaseOptions
 HandLandmarker = mp.tasks.vision.HandLandmarker
