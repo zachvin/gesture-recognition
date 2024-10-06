@@ -22,6 +22,7 @@ prediction_classifier = {
    0: 'stop',
    1: 'thumbs down',
    2: 'thumbs up',
+   3: 'excuse me',
 }
 
 cols = []

@@ -17,7 +17,7 @@ current_gesture = -1
 # Create a hand landmarker instance with the live stream mode:
 def record_result(result: HandLandmarkerResult, output_image: mp.Image, timestamp_ms: int):
     # make sure a gesture is being recorded
-    if current_gesture not in ['thumbs-up', 'thumbs-down', 'stop']:
+    if current_gesture not in ['thumbs up', 'thumbs down', 'stop', 'excuse me']:
        return
     
     # save all landmarks in res
@@ -58,34 +58,36 @@ data = pd.DataFrame(columns=cols)
 
 with HandLandmarker.create_from_options(options) as landmarker:
   
-  base_time = time.time() * 1000.0
-  cap = cv2.VideoCapture(0)
-  while cap.isOpened():
-    ret, frame = cap.read()
+   base_time = time.time() * 1000.0
+   cap = cv2.VideoCapture(0)
+   while cap.isOpened():
+      ret, frame = cap.read()
 
-    if ret:
-        cv2.imshow('frame', frame)
+      if ret:
+         cv2.imshow('frame', frame)
 
-        timestamp = int((time.time() * 1000.0) - base_time)
+         timestamp = int((time.time() * 1000.0) - base_time)
 
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
 
-        landmarker.detect_async(mp_image, timestamp)
+         landmarker.detect_async(mp_image, timestamp)
 
-    k = cv2.waitKey(1)
-    if k == 27:
-       break
+      k = cv2.waitKey(1)
+      if k == 27:
+         break
 
-    if k == ord('a'):
-       current_gesture = 'thumbs-up'
-    elif k == ord('b'):
-       current_gesture = 'thumbs-down'
-    elif k == ord('c'):
-       current_gesture = 'stop'
-    else:
-       current_gesture = -1
+      if k == ord('a'):
+         current_gesture = 'thumbs up'
+      elif k == ord('b'):
+         current_gesture = 'thumbs down'
+      elif k == ord('c'):
+         current_gesture = 'stop'
+      elif k == ord('d'):
+         current_gesture = 'excuse me'
+      else:
+         current_gesture = -1
        
 if len(data) > 0:
-   data.to_csv('gesture-data/gesture-data.csv', index=None)
+   data.to_csv('data/gesture-data.csv', mode='a', header=False, index=None)
 cv2.destroyAllWindows()
 cap.release()
