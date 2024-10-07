@@ -63,6 +63,7 @@ def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
     frame_num = 0
 
     if not cap.isOpened():
+        tqdm.write(f'[WARN] Skipped {path}')
         return data, 0
 
     while cap.isOpened():
@@ -134,19 +135,30 @@ if __name__ == '__main__':
 
     global_frame_num = 0
 
+    videos_to_process = []
+    if True:
+        words = ['book', 'computer', 'medicine', 'backpack', 'teacher']
+        with open('video-lookup.json', 'r') as f:
+            video_lookup = json.load(f)
+            for word in words:
+                videos_to_process += [v + '.mp4' for v in video_lookup[word]]
+    else:
+        videos_to_process = sorted([f for f in os.listdir('../WLASL/start_kit/videos/') if os.path.splitext(f)[1] == '.mp4'])
+
+
     video_logs = pd.DataFrame(columns=['id', 'gloss'])
-    videos_to_process = sorted([f for f in os.listdir('../WLASL/start_kit/videos/') if os.path.splitext(f)[1] == '.mp4'])
     with HandLandmarker.create_from_options(hand_options) as hand_landmarker:
         with PoseLandmarker.create_from_options(pose_options) as pose_landmarker:
-            for path in tqdm(videos_to_process[:100]):
+            for path in tqdm(videos_to_process):
                 num = os.path.splitext(path)[0]
+                tqdm.write(num)
 
                 data, num_frames_processed = process_video(f'../WLASL/start_kit/videos/{path}',
                                                            hand_landmarker, pose_landmarker,
                                                            global_frame_num)
-                data.to_csv(f'asl-data/{num}.csv', index=False)
-
-                video_logs.loc[len(video_logs)] = log_video(json_data, num)
+                if len(data):
+                    data.to_csv(f'asl-data/{num}.csv', index=False)
+                    video_logs.loc[len(video_logs)] = log_video(json_data, num)
 
                 global_frame_num += num_frames_processed
             
