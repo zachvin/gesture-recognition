@@ -9,7 +9,7 @@ class RNN(nn.Module):
     self.num_layers = num_layers
     self.num_classes = num_classes
     self.batch_size = batch_size
-    self.device = 'cuda' if torch.cuda.is_available else 'cpu'
+    self.device = 'cpu'
 
     # RNN takes tensor of shape (batch_size, sequence_length, input_size)
     # (N, 30, 90)
@@ -18,19 +18,23 @@ class RNN(nn.Module):
     # classifier -- uses final hidden state as input, outputs probability of
     # each class
     self.fc = nn.Linear(self.hidden_size, self.num_classes)
-    self.softmax = nn.LogSoftmax(dim=1)
+    self.softmax = nn.LogSoftmax()
 
   def forward(self, x):
     # x = (N, 30, 90) = (batch_size, sequence_length, input_size)
     # h_0 = (2, N, 128) = (num_layers, batch_size, hidden_size)
-    h_0 = torch.zeros(self.num_layers, x.size(0),
-                              self.hidden_size).to(device)
+    h_0 = torch.zeros(self.num_layers, self.batch_size,
+                              self.hidden_size).to(torch.float32).to(self.device)
+        
+    if self.batch_size == 1:
+      h_0 = h_0.reshape((self.num_layers, self.hidden_size))
 
     # get RNN last layer output. last hidden layer is no longer necessary
+    x = x.to(torch.float32)
     output, h_n = self.rnn(x, h_0)
 
     # output = (batch_size, sequence_length, hidden_size) = (N, 30, 90)
-    output = output[:, -1, :] # output of last layer for each batch sequence
+    output = output[-1, :] # output of last layer for each batch sequence
 
     # output = (batch_size, hidden_size)
     output = self.fc(output)

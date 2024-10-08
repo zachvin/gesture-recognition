@@ -33,7 +33,6 @@ for lmk in range(1,22):
 # Create a hand landmarker instance with the live stream mode:
 def classify_result(result: HandLandmarkerResult, output_image: mp.Image, timestamp_ms: int):    
    # save all landmarks in res
-   print(len(result.hand_landmarks))
    if result.hand_landmarks:
       res_x = np.zeros(21)
       res_y = np.zeros(21)

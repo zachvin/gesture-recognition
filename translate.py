@@ -54,12 +54,18 @@ def build_cols():
 
 cols = build_cols()
 
-def start_video(path, hand_landmarker, pose_landmarker, model):
-    sequence_length = 0
-    data = pd.DataFrame(columns=cols)
-    cap = cv2.VideoCapture(path)
-    FPS = cap.get(cv2.CAP_PROP_FPS)
+int_to_gloss = {
+    0: 'book',
+    1: 'computer',
+    2: 'backpack',
+    3: 'medicine',
+    4: 'teacher',
+}
 
+def start_video(hand_landmarker, pose_landmarker, model):
+    sequence_length = 50
+    data = pd.DataFrame(columns=cols)
+    cap = cv2.VideoCapture(0)
     frame_num = 0
     
     while cap.isOpened():
@@ -114,17 +120,33 @@ def start_video(path, hand_landmarker, pose_landmarker, model):
         frame_num += 1
 
         if len(data) > sequence_length:
-            data = data.drop(axis=0, index=0)
+            data = data.drop([0])
         if len(data) == sequence_length:
-            pred = model(data)
-            print(pred)
+            data_tensor = torch.tensor(data.to_numpy())
+            pred = model(data_tensor).detach().numpy().argmax()
+            print(int_to_gloss[pred])
+
+        cv2.imshow('Preview', frame)
+
+        k = cv2.waitKey(1)
+        if k == 27:
+            break
             
             
+input_size = 98 # 7 landmarks for upper body and 21 for each hand for a total of
+                # 49 landmarks * 2 x/y positions for each
+sequence_length = 50 # 25 fps, assuming about two seconds per video
+num_layers = 2
+hidden_size = 128
+num_classes = 5 # number of signs
+batch_size = 1
 
 if __name__ == '__main__':
-    model = RNN()
-    model.load_state_dict(torch.load('rnn_asl.pth', weights_only=True))
+    model = RNN(input_size, hidden_size, num_layers, num_classes, batch_size)
+    model.load_state_dict(torch.load('models/asl_rnn.pth', map_location=torch.device('cpu'), weights_only=True))
 
     with HandLandmarker.create_from_options(hand_options) as hand_landmarker:
         with PoseLandmarker.create_from_options(pose_options) as pose_landmarker:
                 start_video(hand_landmarker, pose_landmarker, model)
+
+    print('Closing...')
