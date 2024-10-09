@@ -6,6 +6,7 @@ import json
 from tqdm import tqdm
 import sys
 from argparse import ArgumentParser
+import logging
 
 hand_model_path = 'models/hand_landmarker.task'
 pose_model_path = 'models/pose_landmarker_lite.task'
@@ -56,7 +57,7 @@ def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
     frame_num = 0
 
     if not cap.isOpened():
-        tqdm.write(f'[WARN] Skipped {path}')
+        logger.warn(f'Skipped {path}')
         return data, 0
 
     while cap.isOpened():
@@ -70,8 +71,6 @@ def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
             break
 
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-
-        #frame_time = int(global_frame_num * float(1/FPS) * 1000)
 
         hand_landmarker_result = hand_landmarker.detect_for_video(mp_image, global_frame_num)
         pose_landmarker_result = pose_landmarker.detect_for_video(mp_image, global_frame_num)
@@ -109,9 +108,9 @@ def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
         try:
             data.loc[len(data)] = new_row
         except:
-            tqdm.write('ERR: improper data format')
-            tqdm.write(f'{len(cols)} | {len(new_row)} ({len(left_hand)}, {len(right_hand)})')
-            tqdm.write(str(new_row))
+            logger.error('ERR: improper data format')
+            logger.error(f'{len(cols)} | {len(new_row)} ({len(left_hand)}, {len(right_hand)})')
+            logger.error(str(new_row))
             sys.exit(0)
 
         frame_num += 1
@@ -138,24 +137,31 @@ def generate_lookups(json_path, gloss_to_id_path='gloss-to-id.json', id_to_gloss
         with open(id_to_gloss_path, 'w') as f:
             json.dump(json.dumps(id_to_gloss), f)
     except:
-        print(f'[ERR] {id_to_gloss_path} not saved.')
+        logger.error(f'{id_to_gloss_path} not saved.')
 
     # save gloss to id dictionary
     try:
         with open(gloss_to_id_path, 'w') as f:
             json.dump(json.dumps(gloss_to_id), f)
     except:
-        print(f'[ERR] {gloss_to_id_path} not saved.')
+        logger.error(f'{gloss_to_id_path} not saved.')
 
             
+
+# Logging
+logger = logging.basicConfig(__name__)
 
 if __name__ == '__main__':
     # Arguments
     parser = ArgumentParser()
     parser.add_argument('--json-file', '-j', help='File path for WLASL dataset JSON file.')
-    parser.add_argument('--specify-words', '-s', nargs='*', help='Specify words to process, excluding all others.')
+    parser.add_argument('--specify-words', '-s', nargs='*', default=None, help='Specify words to process, excluding all others.')
     parser.add_argument('--videos-path', '-v', help='Path to video files')
     args = parser.parse_args()
+
+    logger.info(str(args.json_file))
+    logger.info(str(args.specify_words))
+    logger.info(str(args.videos_path))
 
     # Read in JSON
     generate_lookups(args.json_file)
@@ -165,9 +171,12 @@ if __name__ == '__main__':
 
     with open('gloss-to-id.json', 'r') as f:
         gloss_to_id = json.loads(json.load(f))
+        if gloss_to_id is not None:
+            logger.info('gloss_to_id loaded')
 
     with open('id-to-gloss.json', 'r') as f:
         id_to_gloss = json.loads(json.load(f))
+        logger.info('id_to_gloss loaded')
 
 
     # Set which videos to be processed
@@ -178,6 +187,8 @@ if __name__ == '__main__':
             videos_to_process += sorted([v + '.mp4' for v in gloss_to_id[word]])
     else:
         videos_to_process = sorted([f for f in os.listdir(args.videos_path) if os.path.splitext(f)[1] == '.mp4'])
+
+    logger.info(f'Processing {len(videos_to_process)} videos')
 
 
     # Process videos
