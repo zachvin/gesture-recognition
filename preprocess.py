@@ -5,6 +5,7 @@ import pandas as pd
 import json
 from tqdm import tqdm
 import sys
+from argparse import ArgumentParser
 
 hand_model_path = 'models/hand_landmarker.task'
 pose_model_path = 'models/pose_landmarker_lite.task'
@@ -47,14 +48,6 @@ def build_cols():
     return cols
 
 cols = build_cols()
-
-def log_video(json, num):
-    for entry in json:
-        gloss = entry['gloss']
-        for instance in entry['instances']:
-            if instance['video_id'] == str(num):
-                return [num, gloss]
-
 
 def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
     data = pd.DataFrame(columns=cols)
@@ -126,40 +119,85 @@ def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
 
     return data, frame_num
 
-            
+def generate_lookups(json_path, gloss_to_id_path='gloss-to-id.json', id_to_gloss_path='id-to-gloss.json'):
+    gloss_to_id = dict()
+    id_to_gloss = dict()
+
+    with open(json_path, 'r') as f:
+        json_data = json.load(f)
+        for entry in json_data:
+            gloss = entry['gloss']
+            for instance in entry['instances']:
+                id = instance['video_id']
+
+                gloss_to_id[gloss] = gloss_to_id.get(gloss, []) + [id]
+                id_to_gloss[id] = gloss
+
+    # save id to gloss dictionary
+    try:
+        with open(id_to_gloss_path, 'w') as f:
+            json.dump(json.dumps(id_to_gloss), f)
+    except:
+        print(f'[ERR] {id_to_gloss_path} not saved.')
+
+    # save gloss to id dictionary
+    try:
+        with open(gloss_to_id_path, 'w') as f:
+            json.dump(json.dumps(gloss_to_id), f)
+    except:
+        print(f'[ERR] {gloss_to_id_path} not saved.')
+
             
 
 if __name__ == '__main__':
-    with open('../WLASL/start_kit/WLASL_v0.3.json', 'r') as f:
+    # Arguments
+    parser = ArgumentParser()
+    parser.add_argument('--json-file', '-j', help='File path for WLASL dataset JSON file.')
+    parser.add_argument('--specify-words', '-s', nargs='*', help='Specify words to process, excluding all others.')
+    parser.add_argument('--videos-path', '-v', help='Path to video files')
+    args = parser.parse_args()
+
+    # Read in JSON
+    generate_lookups(args.json_file)
+
+    with open(args.json_file, 'r') as f:
         json_data = json.load(f)
 
-    global_frame_num = 0
+    with open('gloss-to-id.json', 'r') as f:
+        gloss_to_id = json.load(f)
 
+    with open('id-to-gloss.json', 'r') as f:
+        id_to_gloss = json.load(f)
+
+
+    # Set which videos to be processed
     videos_to_process = []
-    if True:
-        words = ['book', 'computer', 'medicine', 'backpack', 'teacher']
-        with open('video-lookup.json', 'r') as f:
-            video_lookup = json.load(f)
+    if args.specify_words is not None:
+        words = args.specify_words
+        with open('gloss-to-id.json', 'r') as f:
+            gloss_to_id = json.load(f)
             for word in words:
-                videos_to_process += [v + '.mp4' for v in video_lookup[word]]
+                videos_to_process += sorted([v + '.mp4' for v in gloss_to_id[word]])
     else:
-        videos_to_process = sorted([f for f in os.listdir('../WLASL/start_kit/videos/') if os.path.splitext(f)[1] == '.mp4'])
+        videos_to_process = sorted([f for f in os.listdir(args.videos_path) if os.path.splitext(f)[1] == '.mp4'])
 
 
-    video_logs = pd.DataFrame(columns=['id', 'gloss'])
+    # Process videos
+    global_frame_num = 0
+    processed_videos = pd.DataFrame(cols=['id', 'gloss'])
     with HandLandmarker.create_from_options(hand_options) as hand_landmarker:
         with PoseLandmarker.create_from_options(pose_options) as pose_landmarker:
-            for path in tqdm(videos_to_process):
-                num = os.path.splitext(path)[0]
-                tqdm.write(num)
+            for video_file in tqdm(videos_to_process):
+                num = int(os.path.splitext(video_file)[0])
 
-                data, num_frames_processed = process_video(f'../WLASL/start_kit/videos/{path}',
+                data, num_frames_processed = process_video(f'{args.videos_path}/{video_file}',
                                                            hand_landmarker, pose_landmarker,
                                                            global_frame_num)
+                
                 if len(data):
                     data.to_csv(f'asl-data/{num}.csv', index=False)
-                    video_logs.loc[len(video_logs)] = log_video(json_data, num)
+                    processed_videos.loc[len(processed_videos)] = [num, id_to_gloss[num]]
 
                 global_frame_num += num_frames_processed
-            
-            video_logs.to_csv('video-metadata.csv', index=False)
+
+            processed_videos.to_csv('processed-videos.csv', index=False)
