@@ -164,31 +164,29 @@ if __name__ == '__main__':
         json_data = json.load(f)
 
     with open('gloss-to-id.json', 'r') as f:
-        gloss_to_id = json.load(f)
+        gloss_to_id = json.loads(json.load(f))
 
     with open('id-to-gloss.json', 'r') as f:
-        id_to_gloss = json.load(f)
+        id_to_gloss = json.loads(json.load(f))
 
 
     # Set which videos to be processed
     videos_to_process = []
     if args.specify_words is not None:
         words = args.specify_words
-        with open('gloss-to-id.json', 'r') as f:
-            gloss_to_id = json.load(f)
-            for word in words:
-                videos_to_process += sorted([v + '.mp4' for v in gloss_to_id[word]])
+        for word in words:
+            videos_to_process += sorted([v + '.mp4' for v in gloss_to_id[word]])
     else:
         videos_to_process = sorted([f for f in os.listdir(args.videos_path) if os.path.splitext(f)[1] == '.mp4'])
 
 
     # Process videos
     global_frame_num = 0
-    processed_videos = pd.DataFrame(cols=['id', 'gloss'])
+    processed_videos = pd.DataFrame(columns=['id', 'gloss'])
     with HandLandmarker.create_from_options(hand_options) as hand_landmarker:
         with PoseLandmarker.create_from_options(pose_options) as pose_landmarker:
             for video_file in tqdm(videos_to_process):
-                num = int(os.path.splitext(video_file)[0])
+                num = os.path.splitext(video_file)[0]
 
                 data, num_frames_processed = process_video(f'{args.videos_path}/{video_file}',
                                                            hand_landmarker, pose_landmarker,
