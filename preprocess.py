@@ -149,7 +149,7 @@ def generate_lookups(json_path, gloss_to_id_path='gloss-to-id.json', id_to_gloss
             
 
 # Logging
-logger = logging.basicConfig(__name__)
+logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     # Arguments
