@@ -9,7 +9,7 @@ class RNN(nn.Module):
     self.num_layers = num_layers
     self.num_classes = num_classes
     self.batch_size = batch_size
-    self.device = 'cpu'
+    self.device = torch.device('gpu' if torch.cuda.is_available() else 'cpu')
 
     # RNN takes tensor of shape (batch_size, sequence_length, input_size)
     # (N, 30, 90)
