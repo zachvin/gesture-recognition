@@ -85,28 +85,56 @@ class GlossDataset(Dataset):
 
     return landmarks_tensor, gloss
   
-def valid():
+def valid(model, test_loader, loss_function):
   with torch.no_grad():
     n_correct = 0
     n_samples = 0
-    for images, labels in train_loader:
-        images = images.reshape(-1, sequence_length, input_size).to(device)
+    total_loss = 0
+    total_steps = 0
+    model.eval()
+    for landmarks, labels in test_loader:
+        landmarks = landmarks.reshape(-1, sequence_length, input_size).to(device)
         labels = labels.to(device)
-        outputs = model(images)
+        outputs = model(landmarks)
         # max returns (value ,index)
         _, predicted = torch.max(outputs.data, 1)
         n_samples += labels.size(0)
         n_correct += (predicted == labels).sum().item()
 
+        loss = loss_function(predicted, labels)
+        total_loss += loss.item()
+        total_steps += 1
+
     acc = 100.0 * n_correct / n_samples
     print(f'Valid acc: {acc}%')
+    print(f'Valid loss: {total_loss / total_steps}')
+
+class EarlyStop:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_loss = float('inf')
+
+    def early_stop(self, loss):
+        if loss < self.min_loss:
+            self.min_loss = loss
+            self.counter = 0
+        elif loss > (self.min_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
    
   
 model = RNN(input_size, hidden_size, num_layers, num_classes, batch_size).to(device)
+stopper = EarlyStop(5)
 
 gloss_data = GlossDataset('video-metadata.csv', 'asl-data', sequence_length)
-train_loader = DataLoader(gloss_data, batch_size=16, shuffle=True)
-test_loader = DataLoader(gloss_data, batch_size=4)
+train_dataset, test_dataset = torch.utils.data.random_split(gloss_data, [0.8, 0.2])
+
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=4)
 
 # Loss and optimizer
 criterion = nn.NLLLoss()
@@ -131,5 +159,11 @@ for epoch in range(num_epochs):
         optimizer.step()
 
     print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
-    loss = valid()
-    print(f'\tValid loss: {loss:.5f}')
+    valid_loss = valid(model, test_loader, criterion)
+    if stopper.early_stop(valid_loss):
+       print('Stopping early')
+       break
+    
+print('Saving model... ', end='')
+torch.save(model.state_dict(), 'ASL_RNN.pth')
+print('done.')
