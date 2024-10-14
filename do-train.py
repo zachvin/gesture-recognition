@@ -72,9 +72,7 @@ class GlossDataset(Dataset):
   def __init__(self, annotations_file, landmark_dir, sequence_length):
     self.gloss_and_id = pd.read_csv(annotations_file, dtype={'id': 'object', 'gloss':'category'})
     cat_map = {gloss_name: gloss_id for gloss_id, gloss_name in enumerate(self.gloss_and_id['gloss'].cat.categories)}
-    print(cat_map)
     self.gloss_and_id['gloss'] = self.gloss_and_id['gloss'].replace(cat_map)
-    print(self.gloss_and_id.head())
     self.gloss_and_id['gloss'] = self.gloss_and_id['gloss'].astype(int)
 
     self.landmark_dir = landmark_dir
@@ -124,8 +122,8 @@ def valid(model, test_loader, loss_function):
         total_steps += 1
 
     acc = 100.0 * n_correct / n_samples
-    print(f'Valid acc: {acc}%')
-    print(f'Valid loss: {total_loss / total_steps}')
+    logger.info(f'Valid acc: {acc}%')
+    logger.info(f'Valid loss: {total_loss / total_steps}')
 
 class EarlyStop:
     def __init__(self, patience=1, min_delta=0):
@@ -183,12 +181,12 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
 
-    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+    logger.info(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
     valid_loss = valid(model, test_loader, criterion)
     if stopper.early_stop(valid_loss):
-       print('Stopping early')
+       logger.info('Stopping early')
        break
 
-print('Saving model... ', end='')
+logger.info('Saving model...')
 torch.save(model.state_dict(), 'ASL_RNN.pth')
-print('done.')
+logger.info('done.')
