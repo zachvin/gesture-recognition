@@ -2,8 +2,9 @@
 
 #$ -M zvincent@nd.edu # Email address for job notification
 #$ -m abe             # Send mail when job begins, ends and aborts
-#$ -pe smp 2          # Specify parallel environment and legal core size
+#$ -pe smp 2
 #$ -q gpu             # Specify queue
+#$ -l gpu_card=1
 #$ -o ~/log/
 #$ -e ~/log/
 #$ -N asl-train     # Specify job name

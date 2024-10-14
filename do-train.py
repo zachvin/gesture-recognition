@@ -8,7 +8,21 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='do-train.log', level=logging.INFO)
+logger.setLevel(logging.DEBUG)
+
+# Logging handlers
+console_handler = logging.StreamHandler()
+file_handler = logging.FileHandler('log-do-train.log')
+
+console_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.DEBUG)
+
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+
+logger.info('\n==============')
+logger.info('STARTING TRAIN')
+logger.info('==============\n')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 logger.info(f'Using device {"cuda" if torch.cuda.is_available() else "cpu"}')
@@ -97,7 +111,7 @@ class GlossDataset(Dataset):
 
     # trim output if it's too long
     landmarks_tensor = torch.tensor(landmarks.iloc[:self.sequence_length].to_numpy().astype('float32'))
-    labels_tensor = torch.tensor(gloss.astype('float32'))
+    labels_tensor = torch.tensor(gloss, dtype=torch.long)
 
     return landmarks_tensor, gloss
 
@@ -109,21 +123,26 @@ def valid(model, test_loader, loss_function):
     total_steps = 0
     model.eval()
     for landmarks, labels in test_loader:
+        # make prediction
         landmarks = landmarks.reshape(-1, sequence_length, input_size).to(device)
         labels = labels.to(device)
         outputs = model(landmarks)
-        # max returns (value ,index)
+
+        # calculate loss
+        loss = loss_function(outputs, labels)
+        total_loss += loss.item()
+        total_steps += 1
+
+        # statistics
         _, predicted = torch.max(outputs.data, 1)
         n_samples += labels.size(0)
         n_correct += (predicted == labels).sum().item()
 
-        loss = loss_function(predicted, labels)
-        total_loss += loss.item()
-        total_steps += 1
-
+    # print stats
     acc = 100.0 * n_correct / n_samples
-    logger.info(f'Valid acc: {acc}%')
-    logger.info(f'Valid loss: {total_loss / total_steps}')
+    logger.info(f'Valid acc: {acc:.4f}%')
+    logger.info(f'Valid loss: {total_loss / total_steps:.4f}')
+    return total_loss / total_steps
 
 class EarlyStop:
     def __init__(self, patience=1, min_delta=0):
@@ -165,6 +184,8 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 logger.info('Beginning training...')
 n_total_steps = len(train_loader)
 for epoch in range(num_epochs):
+    n_correct = 0
+    n_samples = 0
     model.train()
     for i, (landmarks, labels) in enumerate(train_loader):
         # origin shape: [N, 1, 10, 98]
@@ -176,12 +197,20 @@ for epoch in range(num_epochs):
         outputs = model(landmarks)
         loss = criterion(outputs, labels)
 
+        # Statistics
+        _, predicted = torch.max(outputs.data, 1)
+        n_samples += labels.size(0)
+        n_correct += (predicted == labels).sum().item()
+
         # Backward and optimize
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+    acc = n_correct / n_samples * 100.0
+
     logger.info(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+    logger.info(f'\nAccuracy: {acc:.4f}')
     valid_loss = valid(model, test_loader, criterion)
     if stopper.early_stop(valid_loss):
        logger.info('Stopping early')
