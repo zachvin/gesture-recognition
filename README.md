@@ -2,6 +2,41 @@
 
 ### Semester project for Dr. Adam Czajka's Computer Vision class, by Zach Vincent
 
+# Part 3: First update
+
+
+        A few illustrations demonstrating how your methods processed the training data, for instance show a few segmentation results (2 points).
+
+## Pre-processing and feature extraction
+The data for this project is a set of short videos (~1-2 seconds long) that consist of a single ASL gloss (word). Each video is preprocessed according to `preprocess.py`, where each frame is input to MediaPipe. The script outputs a CSV file for each video with 91 features of pose and hand landmarks represented as a fraction of video width and height.
+
+This feature extraction method is ideal for this project because MediaPipe's API is sophisticated and produces reliable landmark outputs. The resulting neural network can be more widely applied since the input data is not dependent on factors such as resolution or height/width ratios. Additionally, it makes the problem solution less of a black box, where feature extraction occurs implicitly somewhere within a convolutional neural network.
+
+> The data used for this solution is currently insufficient. I downloaded and trained my network on [this WLASL dataset](https://dxli94.github.io/WLASL/). The downloading process for this dataset utilizes a Python Python script that remotely downloads a set of thousands of videos included in a JSON file. However, half or more of the videos are hosted on YouTube, which does not support remote video downloading, so all of these videos are skipped. As a result, I have a dataset of hundreds of ASL glosses with only a few examples of each. I was aware of this shortcoming in my **Part 2** submission but I did not realize the extent to which it would ultimately impact performance.
+
+## Setup
+
+The code is now split into two projects: one is my preliminary solution, based just on single-frame hand landmarking. This solution is functional, accurate, and can be run on the webcam with the following:
+
+```
+python3 -m pip install -r requirements.txt
+python3 recognition.py
+```
+
+The second is my newer and more advanced solution, which uses a recurrent neural network to recognize ASL gestures. This solution is technically functional, but due to data collection difficulties (described above), performs around random chance. Setup for this application is identical, but use `translate.py` instead. This uses the webcam.
+
+```
+python3 -m pip install -r requirements.txt
+python3 translate.py
+```
+
+## Future improvements
+
+Now that the proof of concept is complete, I anticipate a number of changes that should improve the model's accuracy and robustness:
+- [ ] Decrease the number of glosses included in the training set and increase the number of examples of each gloss.
+- [ ] Multithread the preprocessing code. Preprocessing takes a few hours on the CRC machines. Though I'll only need to preprocess an entire dataset once or twice more, this will be an important change for others reusing my code or replicating the results.
+- [ ] Normalize the landmarks. The input videos have varying height/width ratios, so two videos showing the same gloss may have very different landmark outputs. A potential solution to this problem could be expressing each landmark's position as a ratio of shoulder width.
+
 # Part 2: Data acquisition and preparation
 
 ## Source
@@ -30,10 +65,10 @@ python3 recognition.py
 ```
 
 The program will print the recognized gesture to the terminal. This initial solution has several weaknesses:
-- [ ] Minimal recognition types - only 3 gestures recognized. Solve by adding more gestures to training dataset.
+- [x] Minimal recognition types - only 3 gestures recognized. Solve by adding more gestures to training dataset.
 - [ ] At least one gesture is always recognized - classifier (XGBoost decision tree) will always output a classification, even when no gesture is present. Solve by taking training images with gesture label `none` or by changing classifier to a neural network that outputs class probabilities and use a minimum threshold for recognition.
 - [ ] Misclassified gestures based on hand orientation - sometimes, stop is interpreted as thumbs up. Solve by including more rotational variety in dataset.
-- [ ] No ability to recognize gestures that involve movement - only static gestures can be recognized with this classifier. Solve by implementing RNN and use [ASL dataset](https://dxli94.github.io/WLASL/).
+- [x] No ability to recognize gestures that involve movement - only static gestures can be recognized with this classifier. Solve by implementing RNN and use [ASL dataset](https://dxli94.github.io/WLASL/).
 
     > I have downloaded this dataset. Though I did not download the entire set, I now have on my machine 3071 unique glosses (ASL words) and 21083 total videos, totaling 717MB of unprocessed videos of varying dimensions. Though more data is available, I don't think I'll need it for the purposes of this project. The dataset came with an associated Computational Use of Data document, which is now uploaded to this repository as `C-UDA-1.0.pdf`.
 
