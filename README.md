@@ -4,11 +4,17 @@
 
 # Part 3: First update
 
+## Data samples
 
-        A few illustrations demonstrating how your methods processed the training data, for instance show a few segmentation results (2 points).
+| Original | Processed |
+| --- | --- |
+| ![image](https://github.com/user-attachments/assets/89abb0ce-be44-4391-b1de-6009e895ea4f) | ![image](https://github.com/user-attachments/assets/946ed048-1791-43f9-910e-af9de86412b5) |
+| ![image](https://github.com/user-attachments/assets/e62fd780-496b-461a-a433-d4d7715f1196) | ![image](https://github.com/user-attachments/assets/956210a4-4410-4a79-9718-e28c29580879) |
+
+
 
 ## Pre-processing and feature extraction
-The data for this project is a set of short videos (~1-2 seconds long) that consist of a single ASL gloss (word). Each video is preprocessed according to `preprocess.py`, where each frame is input to MediaPipe. The script outputs a CSV file for each video with 91 features of pose and hand landmarks represented as a fraction of video width and height.
+The data for this project is a set of short videos (~1-2 seconds long) that consist of a single ASL gloss (word). Each video is preprocessed according to `preprocess.py`, where each frame is input to MediaPipe. The script outputs a CSV file for each video with 98 features of pose and hand landmarks represented as a fraction of video width and height. 7 landmarks represent the upper body and 21 landmarks represent each hand, totaling 49 landmarks, each with 2 x/y positions, totaling 98 features.
 
 This feature extraction method is ideal for this project because MediaPipe's API is sophisticated and produces reliable landmark outputs. The resulting neural network can be more widely applied since the input data is not dependent on factors such as resolution or height/width ratios. Additionally, it makes the problem solution less of a black box, where feature extraction occurs implicitly somewhere within a convolutional neural network.
 
