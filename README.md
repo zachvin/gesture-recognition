@@ -29,6 +29,10 @@ python3 -m pip install -r requirements.txt
 python3 recognition.py
 ```
 
+### Static recognition demo
+![static](https://github.com/user-attachments/assets/7616318a-3700-413f-a246-ae51a508facb)
+
+
 The second is my newer and more advanced solution, which uses a recurrent neural network to recognize ASL gestures. This solution is technically functional, but due to data collection difficulties (described above), performs around random chance. Setup for this application is identical, but use `translate.py` instead. This uses the webcam.
 
 ```
