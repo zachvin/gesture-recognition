@@ -6,7 +6,7 @@ import json
 from tqdm import tqdm
 import sys
 import torch
-from RNN import RNN
+from Models import RNN, LSTM
 
 hand_model_path = 'models/hand_landmarker.task'
 pose_model_path = 'models/pose_landmarker_lite.task'

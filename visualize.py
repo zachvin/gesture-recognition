@@ -6,6 +6,9 @@ import json
 from tqdm import tqdm
 import sys
 from argparse import ArgumentParser
+from mediapipe.framework.formats import landmark_pb2
+from mediapipe import solutions
+import numpy as np
 import logging
 
 hand_model_path = 'models/hand_landmarker.task'
@@ -53,6 +56,50 @@ def build_cols():
 
 cols = build_cols()
 
+def draw_landmarks_on_image_pose(rgb_image, detection_result):
+  pose_landmarks_list = detection_result.pose_landmarks
+  annotated_image = np.copy(rgb_image)
+
+  # Loop through the detected poses to visualize.
+  for idx in range(len(pose_landmarks_list)):
+    pose_landmarks = pose_landmarks_list[idx]
+
+    # Draw the pose landmarks.
+    pose_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
+    pose_landmarks_proto.landmark.extend([
+      landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in pose_landmarks
+    ])
+    solutions.drawing_utils.draw_landmarks(
+      annotated_image,
+      pose_landmarks_proto,
+      solutions.pose.POSE_CONNECTIONS,
+      solutions.drawing_styles.get_default_pose_landmarks_style())
+  return annotated_image
+
+def draw_landmarks_on_image_hand(rgb_image, detection_result):
+  hand_landmarks_list = detection_result.hand_landmarks
+  handedness_list = detection_result.handedness
+  annotated_image = np.copy(rgb_image)
+
+  # Loop through the detected hands to visualize.
+  for idx in range(len(hand_landmarks_list)):
+    hand_landmarks = hand_landmarks_list[idx]
+    handedness = handedness_list[idx]
+
+    # Draw the hand landmarks.
+    hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
+    hand_landmarks_proto.landmark.extend([
+      landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in hand_landmarks
+    ])
+    solutions.drawing_utils.draw_landmarks(
+      annotated_image,
+      hand_landmarks_proto,
+      solutions.hands.HAND_CONNECTIONS,
+      solutions.drawing_styles.get_default_hand_landmarks_style(),
+      solutions.drawing_styles.get_default_hand_connections_style())
+
+  return annotated_image
+
 def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
     data = pd.DataFrame(columns=cols)
     cap = cv2.VideoCapture(path)
@@ -60,7 +107,7 @@ def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
     frame_num = 0
 
     if not cap.isOpened():
-        logger.warn(f'Skipped {path}')
+        logger.warning(f'Skipped {path}')
         return data, 0
 
     while cap.isOpened():
@@ -77,6 +124,13 @@ def process_video(path, hand_landmarker, pose_landmarker, global_frame_num):
 
         hand_landmarker_result = hand_landmarker.detect_for_video(mp_image, global_frame_num)
         pose_landmarker_result = pose_landmarker.detect_for_video(mp_image, global_frame_num)
+
+        if frame_num == 30:
+            img = draw_landmarks_on_image_pose(frame, pose_landmarker_result)
+            img = draw_landmarks_on_image_hand(img, hand_landmarker_result)
+            cv2.imwrite('media/drawn.jpg', img)
+            cv2.imwrite('media/base.jpg', frame)
+            return
 
         new_row = []
 
@@ -157,59 +211,21 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
     # Arguments
     parser = ArgumentParser()
-    parser.add_argument('--json-file', '-j', help='File path for WLASL dataset JSON file.')
-    parser.add_argument('--specify-words', '-s', nargs='*', default=None, help='Specify words to process, excluding all others.')
     parser.add_argument('--videos-path', '-v', help='Path to video files')
     args = parser.parse_args()
 
-    logger.info(str(args.json_file))
-    logger.info(str(args.specify_words))
-    logger.info(str(args.videos_path))
-
-    # Read in JSON
-    generate_lookups(args.json_file)
-
-    with open(args.json_file, 'r') as f:
-        json_data = json.load(f)
-
-    with open('gloss-to-id.json', 'r') as f:
-        gloss_to_id = json.loads(json.load(f))
-        if gloss_to_id is not None:
-            logger.info('gloss_to_id loaded')
-
-    with open('id-to-gloss.json', 'r') as f:
-        id_to_gloss = json.loads(json.load(f))
-        logger.info('id_to_gloss loaded')
-
-
-    # Set which videos to be processed
-    videos_to_process = []
-    if args.specify_words is not None:
-        words = args.specify_words
-        for word in words:
-            videos_to_process += sorted([v + '.mp4' for v in gloss_to_id[word]])
-    else:
-        videos_to_process = sorted([f for f in os.listdir(args.videos_path) if os.path.splitext(f)[1] == '.mp4'])
-
-    logger.info(f'Processing {len(videos_to_process)} videos')
-
+    videos_to_process = sorted([f for f in os.listdir(args.videos_path) if os.path.splitext(f)[1] == '.mp4'])
 
     # Process videos
     global_frame_num = 0
     processed_videos = pd.DataFrame(columns=['id', 'gloss'])
     with HandLandmarker.create_from_options(hand_options) as hand_landmarker:
         with PoseLandmarker.create_from_options(pose_options) as pose_landmarker:
-            for video_file in tqdm(videos_to_process):
+            for video_file in tqdm(videos_to_process[20:]):
                 num = os.path.splitext(video_file)[0]
 
-                data, num_frames_processed = process_video(f'{args.videos_path}/{video_file}',
-                                                           hand_landmarker, pose_landmarker,
-                                                           global_frame_num)
+                process_video(f'{args.videos_path}/{video_file}',
+                                hand_landmarker, pose_landmarker,
+                                global_frame_num)
                 
-                if len(data):
-                    data.to_csv(f'asl-data/{num}.csv', index=False)
-                    processed_videos.loc[len(processed_videos)] = [num, id_to_gloss[num]]
-
-                global_frame_num += num_frames_processed
-
-            processed_videos.to_csv('processed-videos.csv', index=False)
+                break

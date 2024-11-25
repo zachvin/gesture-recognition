@@ -42,3 +42,17 @@ class RNN(nn.Module):
 
     # output = (batch_size, num_classes)
     return output
+  
+class LSTM(nn.Module):
+  def __init__(self, input_size, hidden_size, num_layers, num_classes):
+    super(LSTM, self).__init__()
+
+    self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+    self.label = nn.Linear(hidden_size, num_classes)
+
+  def forward(self, x):
+    # x: shape [batch_size, seq_length, input_size]
+    lstm_out, _ = self.lstm(x)  # lstm_out: shape [batch_size, seq_length, hidden_size]
+    out = self.label(lstm_out[:, -1, :])  # use the last time step's hidden state
+
+    return out
