@@ -10,4 +10,4 @@
 #$ -N asl-train     # Specify job name
 
 conda activate asl
-python3 do-train.py
+python3 train.py
