@@ -2,6 +2,49 @@
 
 ### Semester project for Dr. Adam Czajka's Computer Vision class, by Zach Vincent
 
+# Part 4: Second update
+
+## Classifier justification
+
+For the static hand gesture recognition, I used a random forest classifier. I selected this structure because it is easy to use, runs quickly on my laptop, and required little tuning to get working. A more complex solution was not required because the data points were sufficiently distinct from one another and could be easily distinguished with binary logic.
+
+For the ASL recognition, I used MediaPipe to extract the landmarks (same as in the static hand gesture recognition). Time-dependent features were then extracted using an LSTM with an attention component. The classifier for this method is a single fully-connected layer that connects the attention context layer to the output. For most of my testing, I used 39 classes. I used this method because the relationship between the attention context vector and the final classification is too complex for a random forest.
+
+## Classification accuracy
+
+The following is the performance of the network on a set of 39 unique glosses (ASL "words"). Random accuracy is 2.56%.
+
+    Network params:
+            Input size: 98
+            Num layers: 5
+            Hidden size: 128
+            Learning rate: 0.0001
+            Dropout: 0.2
+            Batch size: 64
+            Num epochs: 250
+
+![fig-23 57](https://github.com/user-attachments/assets/6f044da0-a482-45e4-baf2-d4d032b4c24a)
+
+| Peak training accuracy | Peak testing accuracy |
+| --- | --- |
+| 53.7143% | 15.7931% |
+
+## Training commentary
+
+The current solution shows extreme overfitting. This is likely due to the very small amount of data available to the network -- the most common classes only have 13 instances. The 39 glosses that I selected for training all have 10 or more instances in the dataset; all other glosses appear 9 or fewer times. To remedy this, I implemented several adjustments:
+
+1. **Dropout** - The LSTM has a dropout layer between LSTM layers. By randomly removing neurons, the network cannot rely too heavily on any set of neurons.
+2. **Noise** - `GlossDataset.py` includes an optional `NoiseWrapper` class, which is a simple wrapper of a PyTorch `Dataset` object that adds noise to the set of MediaPipe landmarks for each frame whenever a data point is requested. It has a 50% chance of occurring and only affects data in the training set.
+3. **Attention** - At the advice of Dr. Czajka, I implemented an attention vector to improve performance on the small amount of data. I found the performance to be relatively similar to the LSTM without attention.
+
+However, the performance on the testing set still levels off well before a high accuracy is achieved.
+
+1. **Dataset size** - One clear improvement would be simply increasing the size of the dataset. This could be done by filming myself doing the sign language and preprocessing that data. However, this would be time consuming.
+2. **Preprocessing** - Preprocessing techniques could also be improved; many of the videos in the original dataset have different aspect ratios, so finding a way to normalize each video and their associated landmarks could increase testing accuracy. I would achieve this by taking each set of landmarks and adjusting them to fit in a square. This way, even if the glosses are signed by people of different sizes, the gestures will be expressed as a fraction of the square, so spatial information is retained while disregarding absolute size.
+3. **Hyperparameter tuning** - I could write my own grid search hyperparemeter tuning method or try to use an AutoML Python library to adjust things like the number of LSTM layers, amount of noise, hidden layer size, batch size, etc. I think this would be very helpful for finding better performance relatively quickly before the final presentation, but I think the biggest gains are made in increasing the amount of data.
+
+## Testing setup
+
 # Part 3: First update
 
 ## Data samples
@@ -10,8 +53,6 @@
 | --- | --- |
 | ![image](https://github.com/user-attachments/assets/89abb0ce-be44-4391-b1de-6009e895ea4f) | ![image](https://github.com/user-attachments/assets/946ed048-1791-43f9-910e-af9de86412b5) |
 | ![image](https://github.com/user-attachments/assets/e62fd780-496b-461a-a433-d4d7715f1196) | ![image](https://github.com/user-attachments/assets/956210a4-4410-4a79-9718-e28c29580879) |
-
-
 
 ## Pre-processing and feature extraction
 The data for this project is a set of short videos (~1-2 seconds long) that consist of a single ASL gloss (word). Each video is preprocessed according to `preprocess.py`, where each frame is input to MediaPipe. The script outputs a CSV file for each video with 98 features of pose and hand landmarks represented as a fraction of video width and height. 7 landmarks represent the upper body and 21 landmarks represent each hand, totaling 49 landmarks, each with 2 x/y positions, totaling 98 features.
