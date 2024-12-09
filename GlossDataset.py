@@ -54,7 +54,7 @@ class GlossDataset(Dataset):
     return landmarks_tensor, labels_tensor
 
 class NoiseWrapper(Dataset):
-    def __init__(self, base_dataset, noise_level):
+    def __init__(self, base_dataset, noise_level=0.05):
         super(NoiseWrapper, self).__init__()
         self.base_dataset = base_dataset
         self.noise_level = noise_level
@@ -68,8 +68,8 @@ class NoiseWrapper(Dataset):
         landmarks, gloss = self.base_dataset[idx]
 
         # Occasionally add noise to increase size of dataset
-        if random.random() > 0.5:
-            landmarks += np.random.normal(0, self.noise_level, landmarks.shape)
+        #if random.random() > 0.5:
+        landmarks += np.random.normal(0, self.noise_level, landmarks.shape)
 
         # Occasionally scale landmarks
         if random.random() > 0.5:

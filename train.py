@@ -7,11 +7,15 @@ import os
 import json
 import logging
 from datetime import datetime
+import argparse
 
 from GlossDataset import GlossDataset, NoiseWrapper
 from EarlyStop import EarlyStop
 from Models import RNN, LSTM, LSTMAttention
 
+parser = argparse.ArgumentParser()
+parser.add_argument('noise', default=0.1, nargs='?', type=float)
+args = parser.parse_args()
 
 # Hyperparameters
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -24,14 +28,15 @@ hidden_size = 128
 learning_rate = 1e-4
 batch_size = 64
 num_epochs = 1000
-dropout = 0.3
+dropout = 0.2
 
 # Logging
+now = datetime.now()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
-logging_filename = f'log-train-{dropout}-{num_layers}-{hidden_size}.log'
+logging_filename = f'log-train-{now.hour}-{now.minute}.log'
 if os.path.exists(logging_filename):
     os.remove(logging_filename)
 file_handler = logging.FileHandler(logging_filename)
@@ -42,7 +47,6 @@ file_handler.setLevel(logging.DEBUG)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
-now = datetime.now()
 logger.info('====================')
 logger.info(f'STARTING TRAIN {now.hour}:{now.minute}')
 logger.info('====================\n')
@@ -106,7 +110,7 @@ logger.info('Building GlossDataset...')
 gloss_data = GlossDataset('processed-videos-filtered.csv', 'asl-data', sequence_length)
 logger.info(f'Number of classes: {gloss_data.num_gestures} (random chance accuracy: {100/gloss_data.num_gestures:.2f}%)')
 train_dataset, test_dataset = torch.utils.data.random_split(gloss_data, [0.8, 0.2])
-train_dataset = NoiseWrapper(train_dataset, noise_level=0.05)
+train_dataset = NoiseWrapper(train_dataset, noise_level=args.noise)
 
 logger.info('Building model...')
 num_classes = gloss_data.num_gestures

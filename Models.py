@@ -61,7 +61,7 @@ class LSTMAttention(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, num_classes, dropout):
         super(LSTMAttention, self).__init__()
         
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         
         # Attention layers
         attention_size = hidden_size // 2
