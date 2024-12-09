@@ -46,7 +46,7 @@ However, the performance on the testing set still levels off well before a high 
 
 ## Demo setup
 
-The demo uses the gloss for "accident". It shows one example of a correct classification and one incorrect classification. It loads in a CSV file `processed-videos-demo.csv` and uses the weights from `weights/10pct39cl.pth`. To test it on another video, select one from `processed-videos-filtered.csv` and copy/paste it to the demo CSV file. The filtered CSV file contains only entries from the 39 classes on which it was trained. The full CSV includes closer to 650 glosses.
+The demo uses the gloss for "accident". It shows one example of a correct classification and one incorrect classification. It loads in a CSV file `processed-videos-demo.csv`, which contains the two examples, and uses the weights from `weights/10pct39cl.pth`.
 
 ```
 python3 -m pip install -r requirements.txt
