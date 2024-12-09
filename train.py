@@ -6,10 +6,11 @@ import pandas as pd
 import os
 import json
 import logging
+from datetime import datetime
 
-from GlossDataset import GlossDataset
+from GlossDataset import GlossDataset, NoiseWrapper
 from EarlyStop import EarlyStop
-from Models import RNN, LSTM
+from Models import RNN, LSTM, LSTMAttention
 
 
 # Hyperparameters
@@ -18,24 +19,33 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 input_size = 98 # 7 landmarks for upper body and 21 for each hand for a total of
                 # 49 landmarks * 2 x/y positions for each
 sequence_length = 50 # 25 fps, assuming about two seconds per video
-num_layers = 4
+num_layers = 5
 hidden_size = 128
-learning_rate = 1e-5
-batch_size = 16
-num_epochs = 100
+learning_rate = 1e-4
+batch_size = 64
+num_epochs = 1000
+dropout = 0.3
 
 # Logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
-file_handler = logging.FileHandler('log-train.log')
+logging_filename = f'log-train-{dropout}-{num_layers}-{hidden_size}.log'
+if os.path.exists(logging_filename):
+    os.remove(logging_filename)
+file_handler = logging.FileHandler(logging_filename)
 
 console_handler.setLevel(logging.DEBUG)
 file_handler.setLevel(logging.DEBUG)
 
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
+
+now = datetime.now()
+logger.info('====================')
+logger.info(f'STARTING TRAIN {now.hour}:{now.minute}')
+logger.info('====================\n')
 
 logger.info(f'Using device {"cuda" if torch.cuda.is_available() else "cpu"}')
 
@@ -44,12 +54,10 @@ logger.info(f'\tInput size: {input_size}')
 logger.info(f'\tNum layers: {num_layers}')
 logger.info(f'\tHidden size: {hidden_size}')
 logger.info(f'\tLearning rate: {learning_rate}')
+logger.info(f'\tDropout: {dropout}')
 logger.info(f'\tBatch size: {batch_size}')
 logger.info(f'\tNum epochs: {num_epochs}')
 
-logger.info('\n==============')
-logger.info('STARTING TRAIN')
-logger.info('==============\n')
 
 def valid(model: nn.Module, test_loader: DataLoader, loss_function) -> float:
   """
@@ -89,41 +97,41 @@ def valid(model: nn.Module, test_loader: DataLoader, loss_function) -> float:
 
     # print stats
     acc = 100.0 * n_correct / n_samples
-    logger.info(f'Valid acc: {acc:.4f}%')
-    logger.info(f'Valid loss: {total_loss / total_steps:.4f}')
     return total_loss / total_steps, acc
 
-stopper = EarlyStop(5)
+stopper = EarlyStop(num_epochs) # Setting num_epochs for EarlyStop effectively turns off early stopping
 
 # Assemble data and model
 logger.info('Building GlossDataset...')
-gloss_data = GlossDataset('processed-videos.csv', 'asl-data', sequence_length)
+gloss_data = GlossDataset('processed-videos-filtered.csv', 'asl-data', sequence_length)
+logger.info(f'Number of classes: {gloss_data.num_gestures} (random chance accuracy: {100/gloss_data.num_gestures:.2f}%)')
 train_dataset, test_dataset = torch.utils.data.random_split(gloss_data, [0.8, 0.2])
+train_dataset = NoiseWrapper(train_dataset, noise_level=0.05)
 
 logger.info('Building model...')
 num_classes = gloss_data.num_gestures
-model = RNN(input_size, hidden_size, num_layers, num_classes, batch_size).to(device)
+#model = LSTM(input_size, hidden_size, num_layers, num_classes, dropout).to(device)
+model = LSTMAttention(input_size, hidden_size, num_layers, num_classes, dropout).to(device)
+#model = RNN(input_size, hidden_size, num_layers, num_classes, batch_size).to(device)
 
 logger.info('Building DataLoaders...')
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=4)
 
-model_train_data = pd.DataFrame(columns=['epoch', 'train-accu', 'train-loss', 'valid-accu', 'valid-loss'])
-
 # Loss and optimizer
-criterion = nn.NLLLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 # Train the model
 logger.info('Beginning training...')
 n_total_steps = len(train_loader)
+training_data = []
 for epoch in range(num_epochs):
     n_correct = 0
     n_samples = 0
     model.train()
     for i, (landmarks, labels) in enumerate(train_loader):
-        # origin shape: [N, 1, 10, 98]
-        # resized: [N, 50, 94]
+        # Shape: [N, 50, 98]
         landmarks = landmarks.reshape(-1, sequence_length, input_size).to(device)
         labels = labels.to(device)
 
@@ -144,15 +152,14 @@ for epoch in range(num_epochs):
     train_accu = n_correct / n_samples * 100.0
     valid_loss, valid_accu = valid(model, test_loader, criterion)
 
-    logger.info(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
-    logger.info(f'\nTraining ccuracy: {train_accu:.4f}')
-    logger.info(f'\nTesting ccuracy: {valid_accu:.4f}')
+    logger.info(f'Epoch [{epoch+1}/{num_epochs}]:')
+    logger.info(f'\tTraining loss:     {loss.item():.4f}')
+    logger.info(f'\tTraining accuracy: {train_accu:.4f}%')
+    logger.info(f'\tTesting accuracy:  {valid_accu:.4f}%\n')
     if stopper.early_stop(valid_loss):
        logger.info('Stopping early')
        break
 
-    model_train_data.loc[len(model_train_data)] = [epoch, train_accu, loss.item(), valid_accu, valid_loss]
-
 logger.info('Saving model...')
-torch.save(model.state_dict(), 'asl-weights.pth')
+torch.save(model.state_dict(), './weights/asl-weights.pth')
 logger.info('done.')

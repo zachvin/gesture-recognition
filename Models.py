@@ -44,10 +44,10 @@ class RNN(nn.Module):
     return output
   
 class LSTM(nn.Module):
-  def __init__(self, input_size, hidden_size, num_layers, num_classes):
+  def __init__(self, input_size, hidden_size, num_layers, num_classes, dropout):
     super(LSTM, self).__init__()
 
-    self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+    self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
     self.label = nn.Linear(hidden_size, num_classes)
 
   def forward(self, x):
@@ -56,3 +56,36 @@ class LSTM(nn.Module):
     out = self.label(lstm_out[:, -1, :])  # use the last time step's hidden state
 
     return out
+
+class LSTMAttention(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes, dropout):
+        super(LSTMAttention, self).__init__()
+        
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        
+        # Attention layers
+        attention_size = hidden_size // 2
+        self.attention_layer = nn.Linear(hidden_size, attention_size)
+        self.attention_score = nn.Linear(attention_size, 1)
+        
+        # Fully connected layer for output
+        self.label = nn.Linear(hidden_size, num_classes)
+        self.hidden_size = hidden_size
+
+    def forward(self, x):
+        # Pass through LSTM
+        lstm_out, _ = self.lstm(x)  # lstm_out: (batch_size, seq_len, hidden_dim)
+        
+        # Attention mechanism
+        attn_proj = torch.tanh(self.attention_layer(lstm_out))  # (batch_size, seq_len, attention_dim)
+        attn_scores = self.attention_score(attn_proj).squeeze(-1)  # (batch_size, seq_len)
+        attn_weights = torch.softmax(attn_scores, dim=1)  # (batch_size, seq_len)
+        
+        # Compute context vector as weighted sum of LSTM outputs
+        context = torch.bmm(attn_weights.unsqueeze(1), lstm_out)  # (batch_size, 1, hidden_dim)
+        context = context.squeeze(1)  # (batch_size, hidden_dim)
+        
+        # Pass the context vector through a fully connected layer for output
+        output = self.label(context)  # (batch_size, output_dim)
+        
+        return output
