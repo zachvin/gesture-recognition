@@ -42,8 +42,18 @@ However, the performance on the testing set still levels off well before a high 
 1. **Dataset size** - One clear improvement would be simply increasing the size of the dataset. This could be done by filming myself doing the sign language and preprocessing that data. However, this would be time consuming.
 2. **Preprocessing** - Preprocessing techniques could also be improved; many of the videos in the original dataset have different aspect ratios, so finding a way to normalize each video and their associated landmarks could increase testing accuracy. I would achieve this by taking each set of landmarks and adjusting them to fit in a square. This way, even if the glosses are signed by people of different sizes, the gestures will be expressed as a fraction of the square, so spatial information is retained while disregarding absolute size.
 3. **Hyperparameter tuning** - I could write my own grid search hyperparemeter tuning method or try to use an AutoML Python library to adjust things like the number of LSTM layers, amount of noise, hidden layer size, batch size, etc. I think this would be very helpful for finding better performance relatively quickly before the final presentation, but I think the biggest gains are made in increasing the amount of data.
+4. **Semisupervised pseudo labels** - It could help to pretrain the network with pseudo-labeled data. To achieve this, I could split each video into smaller segments and add noise to train the network to find higher level features that are robust to noise. This would allow me to create a large amount of data then fine-tune on the dataset itself.
 
-## Testing setup
+## Demo setup
+
+The demo uses the gloss for "accident". It shows one example of a correct classification and one incorrect classification. It loads in a CSV file `processed-videos-demo.csv` and uses the weights from `weights/10pct39cl.pth`. To test it on another video, select one from `processed-videos-filtered.csv` and copy/paste it to the demo CSV file. The filtered CSV file contains only entries from the 39 classes on which it was trained. The full CSV includes closer to 650 glosses.
+
+```
+python3 -m pip install -r requirements.txt
+python3 demo.py
+```
+
+The output will show the predicted class vs. the actual class. Due to a lack of foresight, I didn't keep track of which items were from the training/testing set (it is randomized every time) so most of the examples should return the correct classification.
 
 # Part 3: First update
 
