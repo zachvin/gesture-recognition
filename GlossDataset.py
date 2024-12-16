@@ -6,7 +6,7 @@ import numpy as np
 import random
 
 class GlossDataset(Dataset):
-  def __init__(self, annotations_file, landmark_dir, sequence_length):
+  def __init__(self, annotations_file, landmark_dir, sequence_length, demo=False):
     """
     Params:
         annotations_file (str): Path to CSV with id,gloss.
@@ -19,6 +19,8 @@ class GlossDataset(Dataset):
     """
     super(GlossDataset, self).__init__()
 
+    self.demo = demo
+
     self.gloss_and_id = pd.read_csv(annotations_file, dtype={'id':'object', 'gloss':'category'})
     cat_map = {gloss_name: int(gloss_id) for gloss_id, gloss_name in enumerate(self.gloss_and_id['gloss'].cat.categories)}
     self.gloss_and_id['gloss'] = self.gloss_and_id['gloss'].cat.rename_categories(cat_map)
@@ -30,11 +32,16 @@ class GlossDataset(Dataset):
     self.loaded_data = []
     for idx in range(len(self.gloss_and_id)):
         landmark_path = os.path.join(self.landmark_dir, self.gloss_and_id['id'].iloc[idx] + '.csv')
-        landmarks = pd.read_csv(landmark_path)
+        try:
+            landmarks = pd.read_csv(landmark_path)
+        except FileNotFoundError:
+            if self.demo:
+                continue
+            raise FileNotFoundError
         self.loaded_data.append(landmarks)
 
   def __len__(self):
-    return len(self.gloss_and_id)
+    return len(self.gloss_and_id) if not self.demo else 2
 
   def __getitem__(self, idx):
     gloss = self.gloss_and_id['gloss'].iloc[idx]
