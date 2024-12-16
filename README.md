@@ -8,10 +8,31 @@
 
 The data that I use for this project is a word-level ASL dataset from a research paper. The dataset is downloaded via a script that collects and downloads videos from various websites, including YouTube. The data that I downloaded was about 20,000 videos representing about 3,000 ASL words ("glosses"). For my training, I used a subset of 39 of the most frequent glosses in the training data. There is an unequal number of instances of each gloss in the dataset, so to maximize training efficiency, I removed the less frequent glosses from the training data. The training and validation subsets are randomly selected from this subset. I believe that random selection for the validation subset is sufficient because each video is slightly different in aspect ratio, signer, signing speed, and exact signing motion. In this way, each sample for a specific gloss varies except for the overall motion that is performed.
 
-After training, the best accuracy on the test set was 15.7931%. This is a simple classification accuracy metric calculated by the number of correctly classified glosses divided by the total number of glosses tested.
+After training, the best accuracy on the test set was 5.7471% with a validation accuracy of 6.8966% and a training accuracy of 45.6274%. This is a simple classification accuracy metric calculated by the number of correctly classified glosses divided by the total number of glosses tested. The validation accuracy was significantly higher in part 4, and this is because I wasn't including a final holdout set for testing. I selected 20% for the testing set because I wanted to be sure that at least some of the samples will be classified correctly, so a larger amount of data points can help confirm that.
 
-The solution performs worse on the test set than it does on the validation set.
+The solution performs worse on the test set than it does on the validation set. This is likely because there is not a very large amount of training data. As a result, the model does not learn to generalize well, especially when some of that data is set aside for validation and testing. The model suffers from an extreme lack of data, so the number one fix for improving both training and validation performance is increasing the number of videos used. More data exists in this dataset, but it is hosted on YouTube, which blocks most download requests. In finding a workaround, it is possible to increase the number of videos per gloss by as much as 100-200%. An additional way to help improve testing accuracy is improving the current data augmentation practices, which currently just add noise to a few of the data samples. By implementing time dilation and possibly adding pretext tasks for self-supervised training, the model would be able to more appropriately generalize to generate accurate classifications. Since the data is randomly sampled, I think the testing and validation sets will likely have similar accuracy throughout training, especially since the validation data is not used to inform the gradient descent of the network in the training phase.
 
+## [Short video](youtube.com)
+
+## Demo
+
+To install the necessary files, use the `requirements.txt` file for installation:
+
+```
+python3 -m pip install -r requirements.txt
+```
+
+Then, just run the `demo.py` file as follows:
+
+```
+python3 demo.py
+```
+
+This file will take two data samples (with ID 56839 for gloss "tall" and ID 66639 for gloss "Thursday") and run them using the best model weights that I trained. The necessary landmark files are included in the `asl-data` folder. The gloss for "tall" is classified correctly, but the gloss for "Thursday" was misclassified as "cousin". Below is the training data for the model used in the demo:
+
+![alstfig](https://github.com/user-attachments/assets/cb7e86e7-6006-4959-891f-5a32d7976645)
+
+It is easy to see that the network is overfitting. The dark blue line represents the validation accuracy and the light blue line represents the training accuracy. These are both on the scale of 0 to 100%, as shown on the left side of the graph. The scale on the right side of the graph is for the training loss, whose units are not correlated with the accuracy percentages. The training loss is just illustrative of the increase in the model's ability to accurately classify the training data. The dotted line shows the average validation accuracy of the last 10 epochs. The network saved as a result of this graph is at the peak point, which is around 7%.
 
 
 # Part 4: Second update
