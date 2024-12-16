@@ -28,12 +28,14 @@ class GlossDataset(Dataset):
     self.landmark_dir = landmark_dir
     self.sequence_length = sequence_length
     self.num_gestures = self.gloss_and_id['gloss'].nunique()
+    self.all_ids = []
 
     self.loaded_data = []
     for idx in range(len(self.gloss_and_id)):
         landmark_path = os.path.join(self.landmark_dir, self.gloss_and_id['id'].iloc[idx] + '.csv')
         try:
             landmarks = pd.read_csv(landmark_path)
+            self.all_ids.append(self.gloss_and_id['id'].iloc[idx])
         except FileNotFoundError:
             if self.demo:
                 continue
@@ -41,7 +43,7 @@ class GlossDataset(Dataset):
         self.loaded_data.append(landmarks)
 
   def __len__(self):
-    return len(self.gloss_and_id) if not self.demo else 2
+    return len(self.loaded_data)
 
   def __getitem__(self, idx):
     gloss = self.gloss_and_id['gloss'].iloc[idx]
@@ -55,10 +57,12 @@ class GlossDataset(Dataset):
         landmarks.loc[len(landmarks)] = last_row
 
     # trim output if it's too long
+    if self.demo:
+        gloss = self.gloss_and_id[self.gloss_and_id['id'] == self.all_ids[idx]]['gloss'].values[0]
     landmarks_tensor = torch.tensor(landmarks.iloc[:self.sequence_length].to_numpy().astype('float32'))
     labels_tensor = torch.tensor(gloss, dtype=torch.long)
 
-    return landmarks_tensor, labels_tensor, self.gloss_and_id['id'].iloc[idx]
+    return landmarks_tensor, labels_tensor, self.all_ids[idx]
 
 class NoiseWrapper(Dataset):
     def __init__(self, base_dataset, noise_level=0.05):
@@ -84,3 +88,5 @@ class NoiseWrapper(Dataset):
             landmarks = np.clip(landmarks, -1, 1)
             
         return landmarks.to(torch.float32), gloss, _
+
+

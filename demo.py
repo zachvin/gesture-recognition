@@ -42,11 +42,12 @@ def valid(model: nn.Module, test_loader: DataLoader) -> float:
         # statistics
         _, predicted = torch.max(outputs.data, 1)
 
+        print(f'Trial for item ID {ids[0]}')
         print(f'Correct label: {labels.item()}')
         print(f'Predicted label: {predicted.item()}\n')
 
 # Assemble data and model
-gloss_data = GlossDataset('processed-videos-filtered.csv', 'asl-data', 50)
+gloss_data = GlossDataset('processed-videos-filtered.csv', 'asl-data', 50, demo=True)
 model = LSTMAttention(98, 128, 5, 39, dropout=0).to(device)
 model.load_state_dict(torch.load('weights/demo-asl-weights.pth', map_location=device, weights_only=True))
 
