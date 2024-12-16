@@ -12,7 +12,7 @@ After training, the best accuracy on the test set was 5.7471% with a validation 
 
 The solution performs worse on the test set than it does on the validation set. This is likely because there is not a very large amount of training data. As a result, the model does not learn to generalize well, especially when some of that data is set aside for validation and testing. The model suffers from an extreme lack of data, so the number one fix for improving both training and validation performance is increasing the number of videos used. More data exists in this dataset, but it is hosted on YouTube, which blocks most download requests. In finding a workaround, it is possible to increase the number of videos per gloss by as much as 100-200%. An additional way to help improve testing accuracy is improving the current data augmentation practices, which currently just add noise to a few of the data samples. By implementing time dilation and possibly adding pretext tasks for self-supervised training, the model would be able to more appropriately generalize to generate accurate classifications. Since the data is randomly sampled, I think the testing and validation sets will likely have similar accuracy throughout training, especially since the validation data is not used to inform the gradient descent of the network in the training phase.
 
-## [Short video](youtube.com)
+## [Short video](https://youtu.be/rS82PpKuIQE)
 
 ## Demo
 
