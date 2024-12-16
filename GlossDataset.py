@@ -65,7 +65,7 @@ class NoiseWrapper(Dataset):
 
     def __getitem__(self, idx):
         # dilation_factor = (random.random() - 0.5) * 0.3 # makes dilation factor from -0.15 to 0.15
-        landmarks, gloss = self.base_dataset[idx]
+        landmarks, gloss, _ = self.base_dataset[idx]
 
         # Occasionally add noise to increase size of dataset
         #if random.random() > 0.5:
@@ -76,4 +76,4 @@ class NoiseWrapper(Dataset):
             landmarks += landmarks * ((random.random() * self.factor) - (self.factor / 2))
             landmarks = np.clip(landmarks, -1, 1)
             
-        return landmarks.to(torch.float32), gloss
+        return landmarks.to(torch.float32), gloss, _

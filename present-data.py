@@ -19,3 +19,5 @@ num_gestures = gloss_and_id['gloss'].nunique()
 
 print(f'Total number of gestures in file {args.path}: {num_gestures}')
 print(gloss_and_id['gloss'].value_counts())
+
+print(gloss_and_id[gloss_and_id['id'] == '56839'])

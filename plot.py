@@ -24,6 +24,8 @@ with open(filepath, 'r') as f:
     training_accuracy = []
     testing_accuracy = []
     for row in f:
+        if 'Saving' in row:
+            break
         if 'Training loss' in row:
             training_loss.append(float(row.split(' ')[-1].strip()))
         if 'Training accuracy' in row:
