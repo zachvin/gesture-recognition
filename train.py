@@ -13,6 +13,8 @@ from GlossDataset import GlossDataset, NoiseWrapper
 from EarlyStop import EarlyStop
 from Models import RNN, LSTM, LSTMAttention
 
+torch.manual_seed(0)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('noise', default=0.1, nargs='?', type=float)
 args = parser.parse_args()
@@ -63,7 +65,7 @@ logger.info(f'\tBatch size: {batch_size}')
 logger.info(f'\tNum epochs: {num_epochs}')
 
 
-def valid(model: nn.Module, test_loader: DataLoader, loss_function) -> float:
+def valid(model: nn.Module, test_loader: DataLoader, loss_function, testing=False) -> float:
   """
   Evaluate the model on the validation set.
   
@@ -83,7 +85,7 @@ def valid(model: nn.Module, test_loader: DataLoader, loss_function) -> float:
     total_loss = 0
     total_steps = 0
     model.eval()
-    for landmarks, labels in test_loader:
+    for landmarks, labels, ids in test_loader:
         # make prediction
         landmarks = landmarks.reshape(-1, sequence_length, input_size).to(device)
         labels = labels.to(device)
@@ -99,6 +101,11 @@ def valid(model: nn.Module, test_loader: DataLoader, loss_function) -> float:
         n_samples += labels.size(0)
         n_correct += (predicted == labels).sum().item()
 
+        if testing:
+           logger.info(f'{labels}')
+           logger.info(f'{predicted}')
+           logger.info(f'{ids}')
+
     # print stats
     acc = 100.0 * n_correct / n_samples
     return total_loss / total_steps, acc
@@ -109,7 +116,7 @@ stopper = EarlyStop(num_epochs) # Setting num_epochs for EarlyStop effectively t
 logger.info('Building GlossDataset...')
 gloss_data = GlossDataset('processed-videos-filtered.csv', 'asl-data', sequence_length)
 logger.info(f'Number of classes: {gloss_data.num_gestures} (random chance accuracy: {100/gloss_data.num_gestures:.2f}%)')
-train_dataset, test_dataset = torch.utils.data.random_split(gloss_data, [0.8, 0.2])
+train_dataset, test_dataset, valid_dataset = torch.utils.data.random_split(gloss_data, [0.7, 0.2, 0.1])
 train_dataset = NoiseWrapper(train_dataset, noise_level=args.noise)
 
 logger.info('Building model...')
@@ -121,10 +128,14 @@ model = LSTMAttention(input_size, hidden_size, num_layers, num_classes, dropout)
 logger.info('Building DataLoaders...')
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=4)
+valid_loader = DataLoader(valid_dataset, batch_size=1)
 
 # Loss and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+best_model = None
+highest_accu = 0
 
 # Train the model
 logger.info('Beginning training...')
@@ -134,7 +145,7 @@ for epoch in range(num_epochs):
     n_correct = 0
     n_samples = 0
     model.train()
-    for i, (landmarks, labels) in enumerate(train_loader):
+    for i, (landmarks, labels, ids) in enumerate(train_loader):
         # Shape: [N, 50, 98]
         landmarks = landmarks.reshape(-1, sequence_length, input_size).to(device)
         labels = labels.to(device)
@@ -156,6 +167,10 @@ for epoch in range(num_epochs):
     train_accu = n_correct / n_samples * 100.0
     valid_loss, valid_accu = valid(model, test_loader, criterion)
 
+    if valid_accu > highest_accu:
+       highest_accu = valid_accu
+       best_model = model.state_dict()
+
     logger.info(f'Epoch [{epoch+1}/{num_epochs}]:')
     logger.info(f'\tTraining loss:     {loss.item():.4f}')
     logger.info(f'\tTraining accuracy: {train_accu:.4f}%')
@@ -163,7 +178,11 @@ for epoch in range(num_epochs):
     if stopper.early_stop(valid_loss):
        logger.info('Stopping early')
        break
+    
+# Testing set
+testing_loss, testing_accu = valid(best_model, valid_loader, criterion, testing=True)
+logger.info(f'Testing accuracy: {testing_accu:.4f}%')
 
-logger.info('Saving model...')
-torch.save(model.state_dict(), './weights/asl-weights.pth')
+logger.info('Saving best model...')
+torch.save(best_model, './weights/best-asl-weights.pth')
 logger.info('done.')

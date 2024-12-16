@@ -51,7 +51,7 @@ class GlossDataset(Dataset):
     landmarks_tensor = torch.tensor(landmarks.iloc[:self.sequence_length].to_numpy().astype('float32'))
     labels_tensor = torch.tensor(gloss, dtype=torch.long)
 
-    return landmarks_tensor, labels_tensor
+    return landmarks_tensor, labels_tensor, self.gloss_and_id['id'].iloc[idx]
 
 class NoiseWrapper(Dataset):
     def __init__(self, base_dataset, noise_level=0.05):

@@ -3,10 +3,9 @@ import cv2
 import os
 import pandas as pd
 import json
-from tqdm import tqdm
 import sys
 import torch
-from Models import RNN, LSTM
+from Models import RNN, LSTM, LSTMAttention
 
 hand_model_path = 'models/hand_landmarker.task'
 pose_model_path = 'models/pose_landmarker_lite.task'
@@ -122,7 +121,7 @@ def start_video(hand_landmarker, pose_landmarker, model):
         if len(data) > sequence_length:
             data = data.drop([0])
         if len(data) == sequence_length:
-            data_tensor = torch.tensor(data.to_numpy())
+            data_tensor = torch.tensor(data.to_numpy(), dtype=torch.float32)
             pred = model(data_tensor).detach().numpy().argmax()
             print(int_to_gloss[pred])
 
@@ -136,14 +135,14 @@ def start_video(hand_landmarker, pose_landmarker, model):
 input_size = 98 # 7 landmarks for upper body and 21 for each hand for a total of
                 # 49 landmarks * 2 x/y positions for each
 sequence_length = 50 # 25 fps, assuming about two seconds per video
-num_layers = 2
+num_layers = 5
 hidden_size = 128
-num_classes = 5 # number of signs
+num_classes = 39 # number of signs
 batch_size = 1
 
 if __name__ == '__main__':
-    model = RNN(input_size, hidden_size, num_layers, num_classes, batch_size)
-    model.load_state_dict(torch.load('models/asl_rnn.pth', map_location=torch.device('cpu'), weights_only=True))
+    model = LSTMAttention(input_size, hidden_size, num_layers, num_classes, 0.0)
+    model.load_state_dict(torch.load('weights/10pct39cl.pth', map_location=torch.device('cpu'), weights_only=True))
 
     with HandLandmarker.create_from_options(hand_options) as hand_landmarker:
         with PoseLandmarker.create_from_options(pose_options) as pose_landmarker:
