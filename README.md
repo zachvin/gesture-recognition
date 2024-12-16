@@ -2,6 +2,18 @@
 
 ### Semester project for Dr. Adam Czajka's Computer Vision class, by Zach Vincent
 
+# Part 5: Final update
+
+## Database description
+
+The data that I use for this project is a word-level ASL dataset from a research paper. The dataset is downloaded via a script that collects and downloads videos from various websites, including YouTube. The data that I downloaded was about 20,000 videos representing about 3,000 ASL words ("glosses"). For my training, I used a subset of 39 of the most frequent glosses in the training data. There is an unequal number of instances of each gloss in the dataset, so to maximize training efficiency, I removed the less frequent glosses from the training data. The training and validation subsets are randomly selected from this subset. I believe that random selection for the validation subset is sufficient because each video is slightly different in aspect ratio, signer, signing speed, and exact signing motion. In this way, each sample for a specific gloss varies except for the overall motion that is performed.
+
+After training, the best accuracy on the test set was 15.7931%. This is a simple classification accuracy metric calculated by the number of correctly classified glosses divided by the total number of glosses tested.
+
+The solution performs worse on the test set than it does on the validation set.
+
+
+
 # Part 4: Second update
 
 ## Classifier justification
