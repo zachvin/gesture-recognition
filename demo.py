@@ -31,7 +31,9 @@ def valid(model: nn.Module, test_loader: DataLoader) -> float:
 
   with torch.no_grad():
     model.eval()
-    for landmarks, labels in test_loader:
+    for landmarks, labels, ids in test_loader:
+        if ids[0] not in '56839' and ids[0] not in '66639':
+            continue
         # make prediction
         landmarks = landmarks.reshape(-1, 50, 98).to(device)
         labels = labels.to(device)
@@ -44,10 +46,9 @@ def valid(model: nn.Module, test_loader: DataLoader) -> float:
         print(f'Predicted label: {predicted.item()}\n')
 
 # Assemble data and model
-gloss_data = GlossDataset('processed-videos-demo.csv', 'asl-data', 50)
-num_classes = gloss_data.num_gestures
+gloss_data = GlossDataset('processed-videos-filtered.csv', 'asl-data', 50)
 model = LSTMAttention(98, 128, 5, 39, dropout=0).to(device)
-model.load_state_dict(torch.load('weights/10pct39cl.pth', map_location=device, weights_only=True))
+model.load_state_dict(torch.load('weights/demo-asl-weights.pth', map_location=device, weights_only=True))
 
 test_loader = DataLoader(gloss_data, batch_size=1)
 valid(model, test_loader)
